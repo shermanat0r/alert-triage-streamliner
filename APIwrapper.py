@@ -15,6 +15,7 @@ class APIwrapper:
         self.VT_key = os.environ.get("VIRUSTOTALAPIKEY")
         if not self.VT_key:
             print("Missing VirusTotal API Key.")
+        # to do: add ability to add the API key to the environment variable
     
     def VT_lookup(self, entity):
         headers = {
