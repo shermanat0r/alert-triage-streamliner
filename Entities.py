@@ -3,7 +3,6 @@
 """
 Name: Entities.py
 Author: Caleb Bryant
-Organization: Cyderes
 Date: 2023/02/11
 Description: Entity classes representing common details present in security incidents. Some entities have their own functions to enrich their information. 
 """
@@ -17,28 +16,31 @@ class Entity:
         self.value = value
         self.enrichments = None
 
-class IPaddr(Entity):
-    def __init__(self, value, ipType):
+class IP_Address(Entity):
+    def __init__(self, value, ip_type):
         Entity.__init__(self, "IP Address", value)
         self.VT_url = "https://www.virustotal.com/api/v3/ip_addresses/{}".format(self.value)
-        self.type = ipType
+        self.ip_type = ip_type
 
     def defang(self):
         return self.value.replace(".", "[.]", 1)
 
     def enrich(self):
-        wrapper = APIwrapper()
-        self.enrichments = wrapper.VT_lookup(self).json()
-        # leaving this in so I remember where the interesting data is, thinking I want to move this somewhere else
-        # harmless = self.enrichments["data"]["attributes"]["last_analysis_stats"]["malicious"]
-        # malicious = self.enrichments["data"]["attributes"]["last_analysis_stats"]["suspicious"]
-        # badVotes = harmless + malicious
+        if not self.public:
+            self.enrichments = "Internal IP address"
+        else:
+            wrapper = APIwrapper()
+            self.enrichments = wrapper.VT_lookup(self).json()
+            # leaving this in so I remember where the interesting data is in the JSON, thinking I want to move this somewhere else
+            # harmless = self.enrichments["data"]["attributes"]["last_analysis_stats"]["malicious"]
+            # malicious = self.enrichments["data"]["attributes"]["last_analysis_stats"]["suspicious"]
+            # badVotes = harmless + malicious
 
 class FileHash(Entity):
     def __init__(self, value):
-        Entity.__init__(self, "File Hash", value, hashType)
+        Entity.__init__(self, "File Hash", value, hash_type)
         self.VT_url = "https://www.virustotal.com/api/v3/files/{}".format(self.value)
-        self.type = hashType
+        self.hash_type = hash_type
 
     def enrich(self):
         wrapper = APIwrapper()
@@ -71,4 +73,3 @@ class URL(Entity):
         protocol = defanged[:4]
         defanged = defanged.replace("http", "hxxp", 1)
         return defanged
-        

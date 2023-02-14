@@ -3,19 +3,21 @@
 """
 Name: reGen.py (report generator)
 Author: Caleb Bryant
-Organization: Cyderes
 Date: 2023/02/11
 Description: Inspired by Zach Branch's Escalator.py, this program is a command line tool meant to streamline the process of collecting information in a security incident.
 """
 
-import re, argparse, Entities, APIwrapper
+import sys, re, argparse
+from ipaddress import ip_address
+from Entities import *
+from APIwrapper import *
 
 # regex declarations
 timestamp_regex = re.compile(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
 ip_regex = re.compile(r"\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b")
-privateip_regex = re.compile(r'^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)[0-9]{1,3}\.[0-9]{1,3}$')
+privateip_regex = re.compile(r'^(10\.([0-9]{1,3}\.[0-9]{1,3})|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)[0-9]{1,3}\.[0-9]{1,3}$')
 url_regex = re.compile(r'^(http|https)://\S+$')
-sha256_regex = re.comile(r'^[a-fA-F0-9]{64}$')
+sha256_regex = re.compile(r'^[a-fA-F0-9]{64}$')
 sha1_regex = re.compile(r'^[a-fA-F0-9]{40}$')
 md5_regex = re.compile(r'^[a-fA-F0-9]{32}$')
 
@@ -24,7 +26,8 @@ parser = argparse.ArgumentParser(description='Automate security incident report 
 
 # declaring parser arguments
 parser.add_argument('name', type=str, help='Name of the triggering alert')
-parser.add_argument('timestamp', type=str, help='UTC timestamp of the event in YYYY-MM-DD HH:MM:SS format')
+parser.add_argument('date', type=str, help='UTC date of the event in YYYY-MM-DD format')
+parser.add_argument('time', type=str, help='UTC timestamp of the event in HH:MM:SS format')
 parser.add_argument('-u', '--user', type=str, help='Username')
 parser.add_argument('-H', '--host', type=str, help='Hostname')
 parser.add_argument('-f', '--file', type=str, help='File name')
@@ -32,7 +35,7 @@ parser.add_argument('-p', '--path', type=str, help='File path')
 parser.add_argument('-a', '--hash', type=str, help='File hash')
 parser.add_argument('-s', '--srcip', type=str, help='Source IP address')
 parser.add_argument('-d', '--destip', type=str, help='Source IP address')
-parser.add_argument('-u', '--url', type=str, help='URL')
+parser.add_argument('-U', '--url', type=str, help='URL')
 parser.add_argument('-D', '--domain', type=str, help='Domain name')
 parser.add_argument('-j', '--jira', action='store_true', help='Create a Jira query link')
 parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity of the output')
@@ -40,13 +43,13 @@ parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity 
 args = parser.parse_args()
 
 alertName = args.name
-timestamp = args.timestamp
+timestamp = "{} {}".format(args.date, args.time)
 user = args.user
 host = args.host
 fileName = args.file
 filePath = args.path
 fileHash = args.hash
-srcip = args.srcip
+srcIp = args.srcip
 destIp = args.destip
 url = args.url
 domain = args.domain
@@ -56,70 +59,72 @@ verbosity = args.verbose
 # def gen_report():
 
 try:
-    raise re.error if not re.match(timestamp_regex, timestamp)
-except re.error as e:
-    print("Invalid timestamp format")
-    exit(0)
+    if not re.match(timestamp_regex, timestamp):
+        raise ValueError("Invalid timestamp format")
 
-if srcIp:
-    try:
-        raise re.error if not re.match(ip_regex, srcIp)
-    except re.error as e:
-        print("Invalid IP address")
-        exit(0)
-    if verbosity == 1 and not re.match(privateip_regex, srcIp):
-        srcIp = Entities.IPaddr(srcIp)
-        srcIp.enrich()
-    # elif verbosity > 1:
-    #     srcIp.enrich()
+    if user:
+        newUser = Entity("User", user)
 
-if destIp:
-    try:
-        raise re.error if not re.match(ip_regex, destIp)
-    except re.error as e:
-        print("Invalid IP address")
-        exit(0)
-    if verbosity == 1 and not re.match(privateip_regex, srcIp):
-        destIp = Entities.IPaddr(destIp)
-        destIp.enrich()
-    # elif verbosity > 1:
-    #     destIp.enrich()
+    if host:
+        newHost = Entity("Hostname", host)
 
-if fileHash:
-    sha256, sha1, md5 = (None, None, None)
-    try:
-        raise re.error if not re.match(sha256_regex, fileHash)
-    except:
-        sha256 = True
-    try:
-        raise re.error if not re.match(sha1_regex, fileHash)
-    except re.error as e:
-        sha1 = True
-    try:
-        raise re.error if not re.match(md5_regex, fileHash)
-    except re.error as e:
-        md5 = True
-    if not (sha256 or sha1 or md5):
-        print("Hash format does not match sha256, sha1, or md5")
-        exit(0)
-    hashType = "sha256" if sha256 else "sha1" if sha1 else "md5" if md5 else None
-    fileHash = Entities.FileHash(fileHash, hashType)
-    if verbosity == 1:
-        fileHash.enrich()
-    # elif verbosity > 1:
-    #     fileHash.enrich()
+    if fileName:
+        newFileName = Entity("Filename, fileName")
 
-if url:
-    try:
-        raise re.error if not re.match(url_regex, url)
-    except re.error as e:
-        print("Invalid URL format")
-        exit(0)
-    if verbosity == 1:
-        url = Entities.URL(url)
-        url.enrich()
-    # elif verbosity > 1:
-    #     ipAddress.enrich()
+    if filePath:
+        newFilePath = Entity("Filepath", filePath)
 
-if jira:
-    # to do: find out how the jira query urls are formatted
+    if fileHash:
+        sha256_error, sha1_error, md5_error = (False, False, False)
+        if not re.match(sha256_regex, fileHash):
+            sha256_error = True
+        if not re.match(sha1_regex, fileHash):
+            sha1_error = True
+        if not re.match(md5_regex, fileHash):
+            md5_error = True
+        if sha256_error and sha1_error and md5_error:
+            raise ValueError("File hash does not match sha265, sha1, or md5 formats")
+        hashType = "sha256" if not sha256_error else "sha1" if not sha1_error else "md5"
+        newFileHash = FileHash(fileHash, hashType)
+        if verbosity == 1:
+            newFileHash.enrich()
+        # elif verbosity > 1:
+        #     fileHash.enrich()
+
+    if srcIp:
+        ipType = "private" if ip_address(srcIp).is_private else "public" # will throw a ValueError if not a valid IP address
+        newSrcIp = IP_Address(srcIp, ipType)
+        if verbosity == 1:
+            srcIp.enrich()
+        # elif verbosity > 1:
+        #     srcIp.enrich()
+
+    if destIp:
+        ipType = "private" if ip_address(destIp).is_private else "public" # will throw a ValueError if not a valid IP address
+        newDestIp = IP_Address(srcIp, ipType)
+        # check if IP is public or private before proceding to save on API calls
+        if verbosity == 1:
+            destIp.enrich()
+        # elif verbosity > 1:
+        #     destIp.enrich()
+        
+
+    if url:
+        if not re.match(url_regex, url):
+            raise ValueError("Invalid URL")
+        url = URL(url)
+        if verbosity == 1:
+            url.enrich()
+        # elif verbosity > 1:
+        #     ipAddress.enrich()
+
+    if domain:
+        # to do
+        pass
+
+    if jira:
+        # to do: find out how the jira query urls are formatted
+        pass
+    
+except ValueError as e:
+    sys.exit(e.args)

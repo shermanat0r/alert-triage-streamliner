@@ -3,7 +3,6 @@
 """
 Name: APEwrapper.py
 Author: Caleb Bryant
-Organization: Cyderes
 Date: 2023/02/11
 Description: Class to interact with APIs. Keeps track of API keys. API keys are meant to be kept in environment variables.
 """
