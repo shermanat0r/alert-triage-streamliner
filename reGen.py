@@ -14,8 +14,6 @@ from APIwrapper import *
 
 # regex declarations
 timestamp_regex = re.compile(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
-ip_regex = re.compile(r"\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b")
-privateip_regex = re.compile(r'^(10\.([0-9]{1,3}\.[0-9]{1,3})|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)[0-9]{1,3}\.[0-9]{1,3}$')
 url_regex = re.compile(r'^(http|https)://\S+$')
 sha256_regex = re.compile(r'^[a-fA-F0-9]{64}$')
 sha1_regex = re.compile(r'^[a-fA-F0-9]{40}$')
@@ -36,6 +34,8 @@ parser.add_argument('-a', '--hash', type=str, help='File hash')
 parser.add_argument('-c', '--cmd', type=str, help='Command line')
 parser.add_argument('-s', '--srcip', type=str, help='Source IP address')
 parser.add_argument('-d', '--destip', type=str, help='Source IP address')
+parser.add_argument('-sP', '--sport', type=int, help='Source port')
+parser.add_argument('-dP', '--dport', type=int, help='Destination port')
 parser.add_argument('-U', '--url', type=str, help='URL')
 parser.add_argument('-D', '--domain', type=str, help='Domain name')
 parser.add_argument('-j', '--jira', action='store_true', help='Create a Jira query link')
@@ -53,6 +53,8 @@ fileHash = args.hash
 commandLine = args.cmd
 srcIp = args.srcip
 destIp = args.destip
+sPort = args.sport
+dPort = args.dport
 url = args.url
 domain = args.domain
 jira = args.jira
@@ -78,7 +80,7 @@ try: # input validation, throw value error if any critical input is malformed
 
     if filePath:
         newFilePath = Entity("filepath", filePath)
-        masterCase.add_entity(filePath)
+        masterCase.add_entity(newFilePath)
 
     if fileHash:
         sha256_error, sha1_error, md5_error = (False, False, False)
@@ -120,6 +122,14 @@ try: # input validation, throw value error if any critical input is malformed
         # elif verbosity > 1:
         #     destIp.enrich()
         masterCase.add_entity(newDestIp)
+
+    if sPort:
+        newSrcPort = Port("source port", sPort)
+        masterCase.add_entity(newSrcPort)
+
+    if dPort:
+        newDestPort = Port("destination port", dPort)
+        masterCase.add_entity(newDestPort)
         
     if url:
         if not re.match(url_regex, url):
@@ -132,12 +142,11 @@ try: # input validation, throw value error if any critical input is malformed
         masterCase.add_entity(newUrl)
 
     if domain:
-        newDomain = Entity("domain", domain)
+        newDomain = Domain(domain)
         masterCase.add_entity(newDomain)
 
     if jira:
-        # to do: find out how the jira query urls are formatted
-        pass
+        masterCase.create_jira_query()
     
 except ValueError as e:
     sys.exit(e.args)

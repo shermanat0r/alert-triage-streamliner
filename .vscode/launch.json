@@ -11,7 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["name 2023-13-02 00:00:00 -s 172.13.33.3"]
+            "args": ["Alert 123", "2023-02-14", "13:45:00", "-u", "John Doe", "-H", "localhost", "-f", "example.txt", "-p", "/home/user/Documents", "-a", "33a2e1c8fbd55707d31d7c1f22b5228f51172d5a6b54869b17b0f77c3546d15b", "-c", "ls -l", "-s", "192.168.0.1", "-d", "192.168.0.2", "-U", "https://example.com", "-D", "example.com", "-j", "-sP", "33", "-dP", "44"],
+            "purpose": ["debug-in-terminal"]
         }
     ]
 }

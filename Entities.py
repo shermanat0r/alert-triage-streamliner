@@ -7,7 +7,7 @@ Date: 2023/02/11
 Description: Entity classes representing common details present in security incidents. Some entities have their own functions to enrich their information. 
 """
 
-import os
+import os, urllib.parse
 from APIwrapper import APIwrapper
 
 class Entity:
@@ -17,7 +17,7 @@ class Entity:
         self.enrichments = None
 
     def defang(self):
-        return self.name
+        return self.value
 
     def format(self):
         return "{}: {}".format(self.name.upper(), self.defang())
@@ -45,12 +45,8 @@ class IP_Address(Entity):
             return
 
 class Port(Entity):
-    def __init__(self, name, protocol, number):
+    def __init__(self, name, number):
         Entity.__init__(self, name, number)
-        self.protocol = protocol
-
-    def format(self):
-        return "{}: {} ({})".format(self.name,self.value, self.protocol)
 
 class FileHash(Entity):
     def __init__(self, name, value):
@@ -95,6 +91,7 @@ class Case:
     def __init__(self, name, time):
         self.name = name
         self.time = time
+        self.jira_query = None
         self.entities = dict()
 
     def add_entity(self, entity):
@@ -104,6 +101,18 @@ class Case:
             self.entities[entity.name] = [entity]
 
     def format(self):
+        print("ALERT NAME: {}".format(self.name))
+        print("TIMESTAMP: {}".format(self.time))
         for entityType in self.entities:
-            # for entity in entityType:
-            print(entityType.format())
+            for entity in self.entities[entityType]:
+                print(entity.format())
+        if self.jira_query:
+            print("Jira Query Link: {}".format(self.jira_query))
+
+    def create_jira_query(self):
+        base = "https://fishtechgroup.atlassian.net/issues/?jql="
+        query = "Organizations=\"REPLACEME\" AND summary~\"{}\"".format(self.name)
+        for entityType in self.entities:
+            for entity in self.entities[entityType]:
+                query += " AND text~\"{}\"".format(entity.value)
+        self.jira_query = base + urllib.parse.quote(query)
