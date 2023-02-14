@@ -33,12 +33,13 @@ parser.add_argument('-H', '--host', type=str, help='Hostname')
 parser.add_argument('-f', '--file', type=str, help='File name')
 parser.add_argument('-p', '--path', type=str, help='File path')
 parser.add_argument('-a', '--hash', type=str, help='File hash')
+parser.add_argument('-c', '--cmd', type=str, help='Command line')
 parser.add_argument('-s', '--srcip', type=str, help='Source IP address')
 parser.add_argument('-d', '--destip', type=str, help='Source IP address')
 parser.add_argument('-U', '--url', type=str, help='URL')
 parser.add_argument('-D', '--domain', type=str, help='Domain name')
 parser.add_argument('-j', '--jira', action='store_true', help='Create a Jira query link')
-parser.add_argument('-v', '--verbose', action='count', help='Increase verbosity of the output')
+parser.add_argument('-v', '--verbose', action='count', help='Increase amount of entity info enrichment')
 
 args = parser.parse_args()
 
@@ -49,6 +50,7 @@ host = args.host
 fileName = args.file
 filePath = args.path
 fileHash = args.hash
+commandLine = args.cmd
 srcIp = args.srcip
 destIp = args.destip
 url = args.url
@@ -56,23 +58,27 @@ domain = args.domain
 jira = args.jira
 verbosity = args.verbose
 
-# def gen_report():
-
-try:
+try: # input validation, throw value error if any critical input is malformed
     if not re.match(timestamp_regex, timestamp):
         raise ValueError("Invalid timestamp format")
 
+    masterCase = Case(alertName, timestamp)
+
     if user:
-        newUser = Entity("User", user)
+        newUser = Entity("user", user)
+        masterCase.add_entity(newUser)
 
     if host:
-        newHost = Entity("Hostname", host)
+        newHost = Entity("hostname", host)
+        masterCase.add_entity(newHost)
 
     if fileName:
-        newFileName = Entity("Filename, fileName")
+        newFileName = Entity("filename", fileName)
+        masterCase.add_entity(newFileName)
 
     if filePath:
-        newFilePath = Entity("Filepath", filePath)
+        newFilePath = Entity("filepath", filePath)
+        masterCase.add_entity(filePath)
 
     if fileHash:
         sha256_error, sha1_error, md5_error = (False, False, False)
@@ -85,42 +91,49 @@ try:
         if sha256_error and sha1_error and md5_error:
             raise ValueError("File hash does not match sha265, sha1, or md5 formats")
         hashType = "sha256" if not sha256_error else "sha1" if not sha1_error else "md5"
-        newFileHash = FileHash(fileHash, hashType)
+        newFileHash = FileHash(hashType, fileHash)
         if verbosity == 1:
             newFileHash.enrich()
         # elif verbosity > 1:
         #     fileHash.enrich()
+        masterCase.add_entity(newFileHash)
+
+    if commandLine:
+        newCommandLine = Entity("command line", commandLine)
+        masterCase.add_entity(newCommandLine)
 
     if srcIp:
-        ipType = "private" if ip_address(srcIp).is_private else "public" # will throw a ValueError if not a valid IP address
-        newSrcIp = IP_Address(srcIp, ipType)
+        ipType = "internal" if ip_address(srcIp).is_private else "external" # will throw a ValueError if not a valid IP address
+        newSrcIp = IP_Address("source ip", srcIp, ipType)
         if verbosity == 1:
             srcIp.enrich()
         # elif verbosity > 1:
         #     srcIp.enrich()
+        masterCase.add_entity(newSrcIp)
 
     if destIp:
-        ipType = "private" if ip_address(destIp).is_private else "public" # will throw a ValueError if not a valid IP address
-        newDestIp = IP_Address(srcIp, ipType)
+        ipType = "internal" if ip_address(destIp).is_private else "external" # will throw a ValueError if not a valid IP address
+        newDestIp = IP_Address("destination ip", srcIp, ipType)
         # check if IP is public or private before proceding to save on API calls
         if verbosity == 1:
             destIp.enrich()
         # elif verbosity > 1:
         #     destIp.enrich()
+        masterCase.add_entity(newDestIp)
         
-
     if url:
         if not re.match(url_regex, url):
             raise ValueError("Invalid URL")
-        url = URL(url)
+        newUrl = URL(url)
         if verbosity == 1:
-            url.enrich()
+            newUrl.enrich()
         # elif verbosity > 1:
         #     ipAddress.enrich()
+        masterCase.add_entity(newUrl)
 
     if domain:
-        # to do
-        pass
+        newDomain = Entity("domain", domain)
+        masterCase.add_entity(newDomain)
 
     if jira:
         # to do: find out how the jira query urls are formatted
@@ -128,3 +141,5 @@ try:
     
 except ValueError as e:
     sys.exit(e.args)
+
+masterCase.format()
