@@ -110,7 +110,7 @@ class Case:
             print("Jira Query Link: {}".format(self.jira_query))
 
     def create_jira_query(self):
-        base = "https://fishtechgroup.atlassian.net/issues/?jql="
+        base = "https://replace.atlassian.net/issues/?jql="
         query = "Organizations=\"REPLACEME\" AND summary~\"{}\"".format(self.name)
         for entityType in self.entities:
             for entity in self.entities[entityType]:

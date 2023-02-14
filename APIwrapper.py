@@ -24,4 +24,6 @@ class APIwrapper:
         url = entity.VT_url
         response = requests.get(url, headers=headers)
         return response
-        
+    
+    # ipinfo API
+    # google safebrowsing API
