@@ -1,5 +1,3 @@
- #!/usr/env/python3.10
-
 """
 Name: Entities.py
 Author: Caleb Bryant

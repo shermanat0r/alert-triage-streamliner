@@ -1,5 +1,3 @@
- #!/usr/env/python3.10
-
 """
 Name: reGen.py (report generator)
 Author: Caleb Bryant

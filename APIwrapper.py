@@ -1,5 +1,3 @@
- #!/usr/env/python3.10
-
 """
 Name: APEwrapper.py
 Author: Caleb Bryant
