@@ -24,6 +24,7 @@ parser = argparse.ArgumentParser(description='Automate security incident report 
 parser.add_argument('name', type=str, help='Name of the triggering alert')
 parser.add_argument('date', type=str, help='UTC date of the event in YYYY-MM-DD format')
 parser.add_argument('time', type=str, help='UTC timestamp of the event in HH:MM:SS format')
+parser.add_argument('organization', type=str, help='Organization associated with the incident')
 parser.add_argument('-u', '--user', type=str, help='Username')
 parser.add_argument('-H', '--host', type=str, help='Hostname')
 parser.add_argument('-f', '--file', type=str, help='File name')
@@ -43,6 +44,7 @@ args = parser.parse_args()
 
 alertName = args.name
 timestamp = "{} {}".format(args.date, args.time)
+organization = args.organization
 user = args.user
 host = args.host
 fileName = args.file
@@ -62,7 +64,7 @@ try: # input validation, throw value error if any critical input is malformed
     if not re.match(timestamp_regex, timestamp):
         raise ValueError("Invalid timestamp format")
 
-    masterCase = Case(alertName, timestamp)
+    masterCase = Case(alertName, timestamp, organization)
 
     if user:
         newUser = Entity("user", user)
@@ -92,10 +94,8 @@ try: # input validation, throw value error if any critical input is malformed
             raise ValueError("File hash does not match sha265, sha1, or md5 formats")
         hashType = "sha256" if not sha256_error else "sha1" if not sha1_error else "md5"
         newFileHash = FileHash(hashType, fileHash)
-        if verbosity == 1:
+        if verbosity > 0:
             newFileHash.enrich()
-        # elif verbosity > 1:
-        #     fileHash.enrich()
         masterCase.add_entity(newFileHash)
 
     if commandLine:
@@ -105,20 +105,15 @@ try: # input validation, throw value error if any critical input is malformed
     if srcIp:
         ipType = "internal" if ip_address(srcIp).is_private else "external" # will throw a ValueError if not a valid IP address
         newSrcIp = IP_Address("source ip", srcIp, ipType)
-        if verbosity == 1:
+        if verbosity > 0:
             srcIp.enrich()
-        # elif verbosity > 1:
-        #     srcIp.enrich()
         masterCase.add_entity(newSrcIp)
 
     if destIp:
         ipType = "internal" if ip_address(destIp).is_private else "external" # will throw a ValueError if not a valid IP address
         newDestIp = IP_Address("destination ip", srcIp, ipType)
-        # check if IP is public or private before proceding to save on API calls
-        if verbosity == 1:
+        if verbosity > 0:
             destIp.enrich()
-        # elif verbosity > 1:
-        #     destIp.enrich()
         masterCase.add_entity(newDestIp)
 
     if sPort:
@@ -133,10 +128,8 @@ try: # input validation, throw value error if any critical input is malformed
         if not re.match(url_regex, url):
             raise ValueError("Invalid URL")
         newUrl = URL(url)
-        if verbosity == 1:
-            newUrl.enrich()
-        # elif verbosity > 1:
-        #     ipAddress.enrich()
+        if verbosity > 0:
+            newUrl.enrich(verbosity)
         masterCase.add_entity(newUrl)
 
     if domain:

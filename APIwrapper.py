@@ -25,3 +25,4 @@ class APIwrapper:
     
     # ipinfo API
     # google safebrowsing API
+    # alienvault API
